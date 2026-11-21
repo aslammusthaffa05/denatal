@@ -33,6 +33,13 @@ function send(res, status, json) {
 /** Works both as a Vercel function and inside dev-server.js (plain Node req/res). */
 export async function apiHandler(req, res, getUser = getUserFromRequest) {
   const url = new URL(req.url, 'http://localhost')
+  let pathname = url.pathname
+  // vercel.json sends every /api/... address to api/index.js and keeps the real address here
+  const forced = url.searchParams.get('__path')
+  if (forced !== null) {
+    pathname = '/api/' + forced.replace(/^\/+/, '')
+    url.searchParams.delete('__path')
+  }
   let body
   if (req.method !== 'GET' && req.method !== 'DELETE') {
     try {
@@ -47,7 +54,7 @@ export async function apiHandler(req, res, getUser = getUserFromRequest) {
   }
   const { status, json } = await dispatch({
     method: req.method,
-    path: url.pathname,
+    path: pathname,
     query: Object.fromEntries(url.searchParams),
     body,
     req,
