@@ -13,6 +13,7 @@ export default function ProductDetail() {
   const { addItem } = useCart()
   const [product, setProduct] = useState(null)
   const [qty, setQty] = useState(1)
+  const [qtyText, setQtyText] = useState('1') // what the box shows (may be empty while the customer types)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
 
@@ -41,12 +42,41 @@ export default function ProductDetail() {
   const soldOut = product.stock <= 0
   const maxQty = Math.min(product.stock, 100)
 
+  const changeQty = (n) => {
+    setQty(n)
+    setQtyText(String(n))
+  }
+  const limitReached = () => toast.error(`Only ${maxQty} available`, { id: 'qty-limit' })
+
+  // The customer can type a quantity. Anything above the available stock is not allowed.
+  const onType = (e) => {
+    const digits = e.target.value.replace(/\D/g, '')
+    if (digits === '') {
+      setQtyText('')
+      return
+    }
+    let n = parseInt(digits, 10)
+    if (n > maxQty) {
+      n = maxQty
+      limitReached()
+    }
+    changeQty(Math.max(1, n))
+  }
+  const onBlur = () => {
+    if (qtyText === '') changeQty(1)
+  }
+  const increase = () => {
+    if (qty >= maxQty) return limitReached()
+    changeQty(qty + 1)
+  }
+  const quantity = qtyText === '' ? 1 : qty
+
   const add = () => {
-    addItem(product, qty)
+    addItem(product, quantity)
     toast.success(`${product.name} added to cart`)
   }
   const buyNow = () => {
-    addItem(product, qty)
+    addItem(product, quantity)
     navigate('/cart')
   }
 
@@ -78,9 +108,17 @@ export default function ProductDetail() {
           {!soldOut && (
             <div className="mt-8 flex flex-wrap items-center gap-3">
               <div className="flex items-center rounded-full border border-ink-300/50 bg-white">
-                <button onClick={() => setQty((q) => Math.max(1, q - 1))} className="p-3 hover:text-brand-700" aria-label="Decrease quantity"><Minus size={16} /></button>
-                <span className="w-10 text-center font-semibold" aria-live="polite">{qty}</span>
-                <button onClick={() => setQty((q) => Math.min(maxQty, q + 1))} className="p-3 hover:text-brand-700" aria-label="Increase quantity"><Plus size={16} /></button>
+                <button onClick={() => changeQty(Math.max(1, qty - 1))} disabled={qty <= 1} className="p-3 hover:text-brand-700 disabled:opacity-40" aria-label="Decrease quantity"><Minus size={16} /></button>
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  value={qtyText}
+                  onChange={onType}
+                  onBlur={onBlur}
+                  className="w-12 bg-transparent text-center font-semibold outline-none"
+                  aria-label={`Quantity (maximum ${maxQty})`}
+                />
+                <button onClick={increase} disabled={qty >= maxQty} className="p-3 hover:text-brand-700 disabled:opacity-40" aria-label="Increase quantity"><Plus size={16} /></button>
               </div>
               <button onClick={add} className="btn-outline px-6 py-3"><ShoppingCart size={18} /> Add to cart</button>
               <button onClick={buyNow} className="btn-primary px-6 py-3">Buy now</button>

@@ -11,6 +11,13 @@ export function RequireAuth() {
   return <Outlet />
 }
 
+/** Shop pages, cart, checkout and "my orders" are for customers only: the admin is sent to the admin panel. */
+export function BlockAdmin() {
+  const { loading, isAdmin } = useAuth()
+  if (!loading && isAdmin) return <Navigate to="/admin" replace />
+  return <Outlet />
+}
+
 /**
  * Admin area. The real protection is on the server (every /api/admin call checks the role);
  * this just keeps customers from seeing an empty admin screen.

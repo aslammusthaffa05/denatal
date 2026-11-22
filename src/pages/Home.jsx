@@ -5,9 +5,11 @@ import api from '../lib/api'
 import { clinic } from '../data/clinic'
 import { SectionHeading } from '../components/ui'
 import ProductCard from '../components/ProductCard'
+import { useAuth } from '../context/AuthContext'
 import { ToothMark } from '../components/Logo'
 
 export default function Home() {
+  const { isAdmin } = useAuth()
   const [products, setProducts] = useState([])
 
   useEffect(() => {
@@ -38,9 +40,11 @@ export default function Home() {
               <a href={`tel:+${clinic.phoneRaw}`} className="btn-primary px-6 py-3">
                 <CalendarCheck size={18} /> Book an appointment
               </a>
-              <Link to="/shop" className="btn-outline px-6 py-3">
-                Shop dental products <ArrowRight size={16} />
-              </Link>
+              {!isAdmin && (
+                <Link to="/shop" className="btn-outline px-6 py-3">
+                  Shop dental products <ArrowRight size={16} />
+                </Link>
+              )}
             </div>
             <div className="mt-8 flex items-center gap-3 text-sm text-ink-500">
               <div className="flex text-amber-400" aria-hidden="true">
@@ -132,7 +136,7 @@ export default function Home() {
       </section>
 
       {/* ---------- Shop preview ---------- */}
-      {products.length > 0 && (
+      {!isAdmin && products.length > 0 && (
         <section className="container-x mt-24">
           <div className="flex flex-wrap items-end justify-between gap-4">
             <SectionHeading eyebrow="Dental shop" title="Professional oral-care, delivered to your door" text="Hand-picked products our dentists actually recommend. Secure online payment only." />

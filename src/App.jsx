@@ -1,6 +1,6 @@
 import { Route, Routes } from 'react-router-dom'
 import Layout from './components/Layout'
-import { RequireAdmin, RequireAuth } from './components/RouteGuards'
+import { BlockAdmin, RequireAdmin, RequireAuth } from './components/RouteGuards'
 import Home from './pages/Home'
 import About from './pages/About'
 import Services from './pages/Services'
@@ -27,16 +27,20 @@ export default function App() {
         <Route path="about" element={<About />} />
         <Route path="services" element={<Services />} />
         <Route path="contact" element={<Contact />} />
-        <Route path="shop" element={<Shop />} />
-        <Route path="shop/:id" element={<ProductDetail />} />
-        <Route path="cart" element={<Cart />} />
         <Route path="login/*" element={<Login />} />
         <Route path="register/*" element={<Register />} />
 
-        <Route element={<RequireAuth />}>
-          <Route path="checkout" element={<Checkout />} />
-          <Route path="orders" element={<MyOrders />} />
-          <Route path="orders/:id" element={<OrderDetail />} />
+        {/* customers only: the admin is redirected to /admin */}
+        <Route element={<BlockAdmin />}>
+          <Route path="shop" element={<Shop />} />
+          <Route path="shop/:id" element={<ProductDetail />} />
+          <Route path="cart" element={<Cart />} />
+
+          <Route element={<RequireAuth />}>
+            <Route path="checkout" element={<Checkout />} />
+            <Route path="orders" element={<MyOrders />} />
+            <Route path="orders/:id" element={<OrderDetail />} />
+          </Route>
         </Route>
 
         <Route element={<RequireAdmin />}>

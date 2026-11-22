@@ -1,10 +1,12 @@
 import { Link } from 'react-router-dom'
 import { Clock, Mail, MapPin, Phone } from 'lucide-react'
 import Logo from './Logo'
+import { useAuth } from '../context/AuthContext'
 import { clinic, mapLinkUrl } from '../data/clinic'
 
 export default function Footer() {
   const { address } = clinic
+  const { isAdmin } = useAuth()
   return (
     <footer className="mt-24 bg-brand-900 text-brand-100">
       <div className="container-x grid gap-10 py-14 md:grid-cols-2 lg:grid-cols-4">
@@ -22,7 +24,9 @@ export default function Footer() {
               ['/shop', 'Product shop'],
               ['/contact', 'Location & contact'],
               ['/orders', 'Track my order'],
-            ].map(([to, label]) => (
+            ]
+              .filter(([to]) => !(isAdmin && (to === '/shop' || to === '/orders')))
+              .map(([to, label]) => (
               <li key={to}>
                 <Link to={to} className="text-brand-200 transition hover:text-white">{label}</Link>
               </li>

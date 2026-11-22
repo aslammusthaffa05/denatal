@@ -23,6 +23,8 @@ export default function Navbar() {
   const [open, setOpen] = useState(false)
   const { user, isAdmin, logout } = useAuth()
   const { count } = useCart()
+  // the admin does not see the shop or the cart
+  const visibleLinks = isAdmin ? links.filter((l) => l.to !== '/shop') : links
   const navigate = useNavigate()
   const { pathname } = useLocation()
 
@@ -49,7 +51,7 @@ export default function Navbar() {
         <Logo />
 
         <nav className="hidden items-center gap-1 lg:flex" aria-label="Main">
-          {links.map((l) => (
+          {visibleLinks.map((l) => (
             <NavLink key={l.to} to={l.to} end={l.end} className={linkClass}>
               {l.label}
             </NavLink>
@@ -57,14 +59,16 @@ export default function Navbar() {
         </nav>
 
         <div className="flex items-center gap-2">
-          <Link to="/cart" className="btn-ghost relative !px-3" aria-label={`Cart, ${count} items`}>
-            <ShoppingCart size={20} />
-            {count > 0 && (
-              <span className="absolute -right-0.5 -top-0.5 flex h-5 min-w-5 items-center justify-center rounded-full bg-coral-500 px-1 text-[11px] font-bold text-white">
-                {count}
-              </span>
-            )}
-          </Link>
+          {!isAdmin && (
+            <Link to="/cart" className="btn-ghost relative !px-3" aria-label={`Cart, ${count} items`}>
+              <ShoppingCart size={20} />
+              {count > 0 && (
+                <span className="absolute -right-0.5 -top-0.5 flex h-5 min-w-5 items-center justify-center rounded-full bg-coral-500 px-1 text-[11px] font-bold text-white">
+                  {count}
+                </span>
+              )}
+            </Link>
+          )}
 
           {user ? (
             <div className="hidden items-center gap-1 lg:flex">
@@ -102,7 +106,7 @@ export default function Navbar() {
       {open && (
         <div className="border-t border-sand-200 bg-white lg:hidden">
           <nav className="container-x flex flex-col gap-1 py-3" aria-label="Mobile">
-            {links.map((l) => (
+            {visibleLinks.map((l) => (
               <NavLink key={l.to} to={l.to} end={l.end} className={linkClass}>
                 {l.label}
               </NavLink>
