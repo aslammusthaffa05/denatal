@@ -16,12 +16,17 @@ export default function OrderTimeline({ order }) {
     )
   }
 
-  const cancelled = order.status === 'CANCELLED'
+  const cancelled = order.status === 'CANCELLED' || order.status === 'PAYMENT_FAILED'
   const currentIndex = STEPS.indexOf(order.status)
   const history = [...(order.history || [])].reverse()
 
   return (
     <div>
+      {order.status === 'PAYMENT_FAILED' && (
+        <p className="mb-6 rounded-xl bg-red-50 px-4 py-3 text-sm font-medium text-red-700">
+          Payment failed. Your money has been refunded to your original payment method. Please place the order again.
+        </p>
+      )}
       {!cancelled && (
         <ol className="grid grid-cols-5 gap-1" aria-label="Order progress">
           {STEPS.map((step, i) => {

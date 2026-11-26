@@ -166,9 +166,35 @@ async function syncOrder(o) {
   if (!o || o.payment_status !== 'PENDING' || !o.razorpay_order_id) return false
   const payments = await fetchOrderPayments(o.razorpay_order_id)
   const ok = payments.find((p) => p.status === 'captured')
-  if (!ok) return false
-  await handleProviderPaid(o.razorpay_order_id, ok.id)
-  return true
+  if (ok) {
+    await handleProviderPaid(o.razorpay_order_id, ok.id)
+    return true
+  }
+  // Money was taken but Razorpay sent it back (payment was never captured / auto-refunded)
+  const refunded = payments.find((p) => p.status === 'refunded')
+  if (refunded) {
+    await markRefunded(o, refunded.id)
+    return true
+  }
+  return false
+}
+
+/** Customer paid, but the payment was refunded and never confirmed: tell the customer clearly. */
+async function markRefunded(o, paymentId) {
+  await tx(async (c) => {
+    const { rows } = await c.query(`SELECT * FROM orders WHERE id = $1 FOR UPDATE`, [o.id])
+    if (!rows[0] || rows[0].payment_status !== 'PENDING') return
+    await c.query(
+      `UPDATE orders SET payment_status='REFUNDED', status='PAYMENT_FAILED', razorpay_payment_id=$2 WHERE id=$1`,
+      [o.id, paymentId],
+    )
+    await addEvent(
+      c,
+      o.id,
+      'PAYMENT_FAILED',
+      'Your payment could not be confirmed, so this order was not placed. The full amount has been refunded to your original payment method (it can take 5-7 working days to show). Please place the order again.',
+    )
+  })
 }
 
 let lastSweep = 0

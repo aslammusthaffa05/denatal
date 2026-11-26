@@ -39,6 +39,7 @@ export const STATUS_LABELS = {
   OUT_FOR_DELIVERY: 'Out for delivery',
   DELIVERED: 'Delivered',
   CANCELLED: 'Cancelled',
+  PAYMENT_FAILED: 'Payment failed - refunded',
 }
 
 export const STATUS_STYLES = {
@@ -49,4 +50,5 @@ export const STATUS_STYLES = {
   OUT_FOR_DELIVERY: 'bg-orange-100 text-orange-800',
   DELIVERED: 'bg-emerald-100 text-emerald-800',
   CANCELLED: 'bg-red-100 text-red-700',
+  PAYMENT_FAILED: 'bg-red-100 text-red-700',
 }

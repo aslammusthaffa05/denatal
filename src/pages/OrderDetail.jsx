@@ -104,6 +104,17 @@ export default function OrderDetail() {
         </div>
       )}
 
+      {order.paymentStatus === 'REFUNDED' && (
+        <div className="mt-6 rounded-2xl border border-red-200 bg-red-50 p-5">
+          <p className="font-semibold text-red-800">Payment failed - money refunded</p>
+          <p className="text-sm text-red-700">
+            Your payment could not be confirmed, so this order was not placed. The full amount is being returned to your
+            original payment method (5-7 working days). Please place the order again.
+          </p>
+          <Link to="/shop" className="btn-primary mt-4 inline-flex">Shop again</Link>
+        </div>
+      )}
+
       <div className="mt-8 grid gap-8 lg:grid-cols-[1.2fr,1fr]">
         <div className="space-y-8">
           <section className="card p-6 sm:p-8">
@@ -140,7 +151,11 @@ export default function OrderDetail() {
             <p className="mt-2 text-ink-500">Phone: {s.phone}</p>
             <h3 className="mt-6 font-semibold">Payment</h3>
             <p className="mt-1 text-ink-700">
-              {order.paymentStatus === 'PAID' ? `Paid online on ${formatDateTime(order.paidAt)}` : 'Not paid yet'}
+              {order.paymentStatus === 'PAID'
+                ? `Paid online on ${formatDateTime(order.paidAt)}`
+                : order.paymentStatus === 'REFUNDED'
+                  ? 'Payment failed - amount refunded'
+                  : 'Not paid yet'}
             </p>
           </section>
         </div>
