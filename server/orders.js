@@ -1,5 +1,5 @@
 import { db, tx } from './db.js'
-import { createRazorpayOrder, getKeyId, verifyPaymentSignature } from './razorpay.js'
+import { createRazorpayOrder, fetchOrderPayments, getKeyId, verifyPaymentSignature } from './razorpay.js'
 import { ApiError, PHONE_RE, PINCODE_RE, bad, clean, parseId, toPaise } from './util.js'
 
 /*
@@ -158,19 +158,52 @@ async function findOwned(conn, userId, rawId, { lock = false } = {}) {
   return rows[0]
 }
 
+/**
+ * SELF-HEAL: if an order is still PENDING here but Razorpay says the money was captured
+ * (browser closed, network dropped, webhook missing/failed), mark it PAID now.
+ */
+async function syncOrder(o) {
+  if (!o || o.payment_status !== 'PENDING' || !o.razorpay_order_id) return false
+  const payments = await fetchOrderPayments(o.razorpay_order_id)
+  const ok = payments.find((p) => p.status === 'captured')
+  if (!ok) return false
+  await handleProviderPaid(o.razorpay_order_id, ok.id)
+  return true
+}
+
+let lastSweep = 0
+/** Checks every recent unpaid order against Razorpay (at most once per 20 seconds). */
+async function reconcilePending() {
+  if (Date.now() - lastSweep < 20_000) return
+  lastSweep = Date.now()
+  const { rows } = await db.query(
+    `SELECT * FROM orders WHERE payment_status = 'PENDING' AND razorpay_order_id IS NOT NULL
+        AND created_at > now() - interval '3 days' ORDER BY id DESC LIMIT 20`,
+  )
+  await Promise.allSettled(rows.map(syncOrder))
+}
+
 export async function myOrders(user) {
-  const { rows } = await db.query(`${ORDER_SELECT} WHERE o.user_id = $1 ORDER BY o.created_at DESC, o.id DESC`, [user.id])
+  const q = () => db.query(`${ORDER_SELECT} WHERE o.user_id = $1 ORDER BY o.created_at DESC, o.id DESC`, [user.id])
+  let { rows } = await q()
+  const pending = rows.filter((r) => r.payment_status === 'PENDING').slice(0, 5)
+  if (pending.length) {
+    const changed = await Promise.allSettled(pending.map(syncOrder))
+    if (changed.some((r) => r.status === 'fulfilled' && r.value)) rows = (await q()).rows
+  }
   return hydrate(db, rows)
 }
 
 export async function myOrder(user, rawId) {
   const o = await findOwned(db, user.id, rawId)
+  await syncOrder(o).catch(() => {})
   return loadOne(db, o.id)
 }
 
 /** Lets a customer re-open the payment window for an order that is still unpaid. */
 export async function paymentInfo(user, rawId) {
-  const o = await findOwned(db, user.id, rawId)
+  let o = await findOwned(db, user.id, rawId)
+  if (await syncOrder(o).catch(() => false)) o = await findOwned(db, user.id, rawId)
   if (o.payment_status === 'PAID') throw bad('This order is already paid')
   if (!o.razorpay_order_id) throw bad('This order cannot be paid')
   return { keyId: getKeyId(), razorpayOrderId: o.razorpay_order_id, amount: toPaise(o.total_amount), currency: 'INR' }
@@ -229,6 +262,7 @@ export async function handleProviderPaid(razorpayOrderId, razorpayPaymentId) {
 // ---------------------------------------------------------------- admin
 
 export async function adminList(status) {
+  await reconcilePending().catch(() => {})
   if (status && !STATUSES.includes(status)) throw bad('Invalid status')
   const { rows } = status
     ? await db.query(`${ORDER_SELECT} WHERE o.payment_status='PAID' AND o.status=$1 ORDER BY o.paid_at DESC, o.id DESC`, [status])
@@ -285,6 +319,7 @@ export async function adminUpdateStatus(rawId, body = {}) {
 }
 
 export async function adminStats() {
+  await reconcilePending().catch(() => {})
   const [{ rows: totals }, { rows: byStatus }, { rows: prod }, recent] = await Promise.all([
     db.query(`SELECT count(*) AS paid_orders,
                      coalesce(sum(total_amount) FILTER (WHERE status <> 'CANCELLED'), 0) AS revenue

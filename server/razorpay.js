@@ -42,3 +42,17 @@ export const verifyPaymentSignature = (orderId, paymentId, signature) =>
 /** Webhook signature: HMAC_SHA256(raw request body, webhook_secret). */
 export const verifyWebhookSignature = (rawBody, signature) =>
   hmacMatches(rawBody, process.env.RAZORPAY_WEBHOOK_SECRET || '', signature)
+
+/** Asks Razorpay directly which payments exist for an order. Returns [] if Razorpay cannot be reached. */
+export async function fetchOrderPayments(razorpayOrderId) {
+  if (!keyId() || !keySecret() || !razorpayOrderId) return []
+  try {
+    const res = await fetch(`https://api.razorpay.com/v1/orders/${encodeURIComponent(razorpayOrderId)}/payments`, {
+      headers: { Authorization: 'Basic ' + Buffer.from(`${keyId()}:${keySecret()}`).toString('base64') },
+    })
+    const data = await res.json().catch(() => null)
+    return res.ok && Array.isArray(data?.items) ? data.items : []
+  } catch {
+    return []
+  }
+}
