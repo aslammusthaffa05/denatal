@@ -5,16 +5,11 @@ let clerk
 const cache = new Map() // clerk user id -> { at, user }
 const TTL_MS = 60_000
 
-const adminEmails = () =>
-  (process.env.ADMIN_EMAIL || '')
-    .split(',')
-    .map((e) => e.trim().toLowerCase())
-    .filter(Boolean)
-
 /**
  * Reads the Clerk session token from "Authorization: Bearer ...", verifies it with Clerk,
  * and returns { id, name, email, phone, isAdmin } - or null when nobody is logged in.
- * The ADMIN role comes ONLY from the ADMIN_EMAIL setting on the server (and a verified email).
+ * The ADMIN role comes ONLY from Clerk: the user's *public metadata* must be {"role": "admin"}.
+ * Only you can set it (Clerk dashboard); customers can never change public metadata themselves.
  */
 export async function getUserFromRequest(req) {
   const header = req.headers.authorization || ''
@@ -47,7 +42,7 @@ export async function getUserFromRequest(req) {
   const name =
     [cu.firstName, cu.lastName].filter(Boolean).join(' ').trim() || cu.username || email.split('@')[0] || 'Customer'
 
-  const user = { id: userId, name, email, phone, isAdmin: verified && adminEmails().includes(email) }
+  const user = { id: userId, name, email, phone, isAdmin: verified && cu.publicMetadata?.role === 'admin' }
   cache.set(userId, { at: Date.now(), user })
   return user
 }

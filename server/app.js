@@ -7,7 +7,7 @@ import { ApiError } from './util.js'
 
 /**
  * The whole REST API in one place (same URLs and JSON as the old Spring Boot API).
- *   access: 'public' | 'user' (any logged-in customer) | 'admin' (only ADMIN_EMAIL)
+ *   access: 'public' | 'user' (any logged-in customer) | 'admin' (only Clerk users with public metadata role = admin)
  */
 const routes = [
   ['GET', /^\/api\/health$/, 'public', async () => ({ status: 'ok' })],
